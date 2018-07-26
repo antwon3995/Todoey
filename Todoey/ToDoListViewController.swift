@@ -10,7 +10,8 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
 
-    let itemArray = ["Homework", "Eat", "Video Games"]
+    var itemArray = [""]
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -52,12 +53,52 @@ class ToDoListViewController: UITableViewController {
         }
         
         
+    }
+    
+    
+    //Add new items with add new items button
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        
+        var textField = UITextField()
+        
+        let alert = UIAlertController(title: "Add New ToDoey Item", message: "", preferredStyle: .alert)
+        
+        
+        //every alert to have an action
+            //an action represents a "choice" in the "drop down menu" of the alert
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            //what will happen once user selects the add item button on the alert
+            
+            //adding the text inside the text field to the item array
+                //self. because within a closure
+            self.itemArray.append(textField.text!)
+            
+            
+            //Reloads the data from the datasource, essentially recalls the two fundamental methods
+            self.tableView.reloadData()
+            
+        }
         
         
         
+        //Adding a text field to the alert to allow the user to add items
+        //alert text field is just the name we choose to be the name of the text field
+        //placeholder property is just the text within the text field before the user types anything in
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new item"
+            textField = alertTextField
+        }
+        
+        print(textField)
+        
+        
+        alert.addAction(action)
+        
+        
+        //"printing" the alert
+        present(alert,animated: true, completion: nil)
         
     }
-
     
 
 
