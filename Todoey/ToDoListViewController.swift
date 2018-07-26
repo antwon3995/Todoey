@@ -12,10 +12,16 @@ class ToDoListViewController: UITableViewController {
 
     var itemArray = [""]
     
+    let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        
+        //accessing the array method of the User Defaults that pulls out the value designated with the specific parameter key 
+        if let items = defaults.array(forKey: "ToDoListArray") as? [String]{
+            itemArray = items
+        }
     }
     
     //Two essential methods for table views:
@@ -72,6 +78,11 @@ class ToDoListViewController: UITableViewController {
             //adding the text inside the text field to the item array
                 //self. because within a closure
             self.itemArray.append(textField.text!)
+            
+            //adding an entry into user defaults, entries are key-value pairs
+                //UserDefaults.set(anyValue, stringKey)
+            //resaving the array each time an item is added
+            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
             
             
             //Reloads the data from the datasource, essentially recalls the two fundamental methods
