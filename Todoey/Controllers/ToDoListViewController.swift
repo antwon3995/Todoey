@@ -9,19 +9,23 @@
 import UIKit
 
 class ToDoListViewController: UITableViewController {
-
-    var itemArray = [""]
     
-    let defaults = UserDefaults.standard
+    //creating our own plist called Items
+    //the stuff before it refers to the path to the documents folder where the original plist exists
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+
+
+    var itemArray = [Item]()
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
         
-        //accessing the array method of the User Defaults that pulls out the value designated with the specific parameter key 
-        if let items = defaults.array(forKey: "ToDoListArray") as? [String]{
-            itemArray = items
-        }
+       
+        
+        print(dataFilePath)
+        
+        loadItems()
     }
     
     //Two essential methods for table views:
@@ -35,8 +39,18 @@ class ToDoListViewController: UITableViewController {
     //index path is sort of like the array of entries within the table view itself, it has a row property that will return the index
     //This method makes you create a cell and return it
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
+        let item = itemArray[indexPath.row]//shortcut
+        
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        cell.textLabel?.text = itemArray[indexPath.row]
+        cell.textLabel?.text = item.title
+
+        
+        //Sets the accessory type according to the done property of the item, using a ternary operator
+        //Ternary operator-quick simple way of handling certain conditionals
+        //value/variableName = condition(returns true or false) ? valueIfTrue : valueIfFalse
+        cell.accessoryType = item.done ? .checkmark : .none
+        
         return cell
     }
     
@@ -48,15 +62,9 @@ class ToDoListViewController: UITableViewController {
         //When the cell is pressed, it flashes gray and doesn't stay gray
         tableView.deselectRow(at: indexPath, animated: true)
         
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        //Toggles checkmark accessory to the cell
-        if (tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark){
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }
-        else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-            
-        }
+        saveItems()
         
         
     }
@@ -75,18 +83,16 @@ class ToDoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once user selects the add item button on the alert
             
-            //adding the text inside the text field to the item array
-                //self. because within a closure
-            self.itemArray.append(textField.text!)
-            
-            //adding an entry into user defaults, entries are key-value pairs
-                //UserDefaults.set(anyValue, stringKey)
-            //resaving the array each time an item is added
-            self.defaults.set(self.itemArray, forKey: "ToDoListArray")
+            //Creating a new item object and setting the title property to the text property of the text field
+            let item = Item()
+            item.title = textField.text!
+            self.itemArray.append(item)
             
             
-            //Reloads the data from the datasource, essentially recalls the two fundamental methods
-            self.tableView.reloadData()
+            
+            self.saveItems()
+            
+            
             
         }
         
@@ -110,6 +116,53 @@ class ToDoListViewController: UITableViewController {
         present(alert,animated: true, completion: nil)
         
     }
+    
+    func saveItems(){
+        //An encoder "encodes" item into the property list
+        let encoder = PropertyListEncoder()
+        
+        do {
+            
+            //encoding the item array to be 'addable' to the plist
+            //If the object to be encoded is a custom class
+            //must extend Codable -> (:Codable)
+            //Can only be encoded if the properties are standard datatypes
+            //because all the properties must be shown within the plist and if they aren't standard, plist can't show them
+            let data = try encoder.encode(self.itemArray)
+            
+            //adding the data variable to the plist using the url to the plist
+            try data.write(to: self.dataFilePath!)
+            
+        }
+        catch{
+            print("Error encoding item array, \(error)")
+        }
+        
+        
+        //Reloads the data from the datasource, essentially recalls the two fundamental methods
+        tableView.reloadData()
+        
+    }
+    
+    
+    func loadItems(){
+        
+            
+            //similar to encoding data -> transferring Swift datatypes to the plist
+                //Decoding is transferring data from plist to Swift datatypes
+            
+            
+            if let data = try? Data(contentsOf: dataFilePath!){
+                let decoder = PropertyListDecoder()
+                do{
+                    itemArray = try decoder.decode([Item].self, from: data)
+                }
+                catch {
+                    print("Too bad")
+                }
+            }
+        }
+    
     
 
 
