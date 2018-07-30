@@ -7,25 +7,36 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
-    //creating our own plist called Items
-    //the stuff before it refers to the path to the documents folder where the original plist exists
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+
+    
+    
+    //context is a reference to the context property (database) of the persistent container
+        //UIApplication.shared.delegate is a singleton, reference to the App delegate
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
 
     var itemArray = [Item]()
+    
+    //declare a new Category object named selectedCategory
+        //the didSet happens IMMEDIATELY after a value is set equal to the variable
+        //In this case, a value is set within the prepare segue method within CategoryVC
+    var selectedCategory : Category? {
+        didSet{
+            loadItems()
+        }
+    }
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-       
+        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
-        print(dataFilePath)
         
-        loadItems()
     }
     
     //Two essential methods for table views:
@@ -62,7 +73,24 @@ class ToDoListViewController: UITableViewController {
         //When the cell is pressed, it flashes gray and doesn't stay gray
         tableView.deselectRow(at: indexPath, animated: true)
         
+        
+        
+        //This context.delete only deletes the item from the context (staging area) however doesn't actually make changes to the database
+        //context.save (withi saveItems()) does the actual database updating
+        //Note: deleting the item from the context should come before deleting from the itemArray so that the indexes aren't affected
+//        context.delete(itemArray[indexPath.row])
+//
+//        itemArray.remove(at : indexPath.row)
+        
+        
+        
+        //toggling check or uncheck
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+        //Handy method, can use the setValue method, setValue(value, attributeName)
+        //itemArray[indexPath.row].setValue("Completed", forKey: "title")
+        
+        
         
         saveItems()
         
@@ -83,9 +111,15 @@ class ToDoListViewController: UITableViewController {
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once user selects the add item button on the alert
             
-            //Creating a new item object and setting the title property to the text property of the text field
-            let item = Item()
+            //Creating a new NSManagedObject (Item)
+            //Item is a NSManaged Object because using core data, we inputted Item as an entity so it recognizes it
+            
+            let item = Item(context: self.context)
+            //item in this case is an NSManagedObject, all the required properties must be initialized as there is no class to initialize them, (in this case at least)
             item.title = textField.text!
+            item.done = false
+            //parentCategory (name of the relationship (items to category)) is also a property that must be set
+            item.parentCategory = self.selectedCategory
             self.itemArray.append(item)
             
             
@@ -118,24 +152,14 @@ class ToDoListViewController: UITableViewController {
     }
     
     func saveItems(){
-        //An encoder "encodes" item into the property list
-        let encoder = PropertyListEncoder()
         
         do {
-            
-            //encoding the item array to be 'addable' to the plist
-            //If the object to be encoded is a custom class
-            //must extend Codable -> (:Codable)
-            //Can only be encoded if the properties are standard datatypes
-            //because all the properties must be shown within the plist and if they aren't standard, plist can't show them
-            let data = try encoder.encode(self.itemArray)
-            
-            //adding the data variable to the plist using the url to the plist
-            try data.write(to: self.dataFilePath!)
+            try context.save()
+            print("Success")
             
         }
         catch{
-            print("Error encoding item array, \(error)")
+            print("Error saving context \(error)")
         }
         
         
@@ -144,27 +168,115 @@ class ToDoListViewController: UITableViewController {
         
     }
     
-    
-    func loadItems(){
+
+    //(with request: .....) refers to an internal and external parameter
+    //when calling the method, use loadItems(with : .....)
+        //when inside the method, refer to the ...... with request (internal parameter)
+        //helps with readability sometimes
+    //the = Item.fetchRequest() refers to the default value if when the loadItems method is called and no parameter is given, that default value is used
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate : NSPredicate? = nil){
+        //making a new item of type NSFetchRequest in a request for context
+            //datatype must be specified
+        //this requests all the instances within the Item entity
+//        let request : NSFetchRequest<Item> = Item.fetchRequest()
         
-            
-            //similar to encoding data -> transferring Swift datatypes to the plist
-                //Decoding is transferring data from plist to Swift datatypes
-            
-            
-            if let data = try? Data(contentsOf: dataFilePath!){
-                let decoder = PropertyListDecoder()
-                do{
-                    itemArray = try decoder.decode([Item].self, from: data)
-                }
-                catch {
-                    print("Too bad")
-                }
-            }
+        
+        
+        let parentPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        
+        
+   
+        //optional binding
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [parentPredicate, additionalPredicate])
+        }else{
+            request.predicate = parentPredicate
         }
+        
+        
+        
+        do{
+            itemArray = try context.fetch(request)
+        }
+        catch{
+            print(error)
+        }
+
+        tableView.reloadData()
+    }
+    
+    
+    
     
     
 
+    
 
+
+}
+
+//Extension for TodolistVC, search bar delegate methods
+    //note extensions are outside the last closing brace
+extension ToDoListViewController : UISearchBarDelegate{
+    //delegate method that activates itself each time the text within the search bar changes
+        //so each time the user types something and then deletes all of it, the original list shows
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItems()
+            
+            //threads represent different paths of loading/operating
+                //first thread/main is normally for UI
+                //background thread is normally for the backend, API, database
+            //delegate method normally run in the background thread
+            //This method specifcally transfers the code to the main thread, this is done normally when the code inside is updating UI, we don't want the UI changes to be delayed by any backend stuff like what is happening in this backend delegate method
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()//signifies that the search bar is no longer the element on the view that is selected (keyboard goes away)
+            }
+            
+            
+        }
+        
+        
+    }
+    
+    
+    
+    //delegate method that activates itself each time the search button is pressed
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        
+        //when ever you want to get data from the database, you have to make NSFetchRequests
+            //querying data
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        //we need an NSPredicate to be able to query
+            //we can use language like CONTAINS, IN, BETWEEN  (from SQL) using predicates
+        //NSPredicate(format: attributeName CONTAINS 'character', args: whateverTextForm)
+            //CONTAINS is from SQL
+            //%@ represents what you are searching for, will be replaced by the argument
+            //putting [cd] in behind a command represents NOT case or diacritic sensitive
+                //meaning case or the accents/markings above letters do not matter
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        //the request has an optional predicate property that can be set to equal a predicate
+        request.predicate = predicate
+        
+        //Not involving predicates, we add a sorting device
+            //sorts the results alphabetically (acsending = true) by title
+        let sortDescriptor = NSSortDescriptor(key: "title", ascending: true)
+        
+        //sortDescriptors<--plural
+            //expects an array of sortDescriptors, however in our case we only have one
+        request.sortDescriptors = [sortDescriptor]
+        
+        
+        //to get the data, we still use the fetch method, just in this case we have special sortDescriptor and predicate properties to further control the fetch
+        loadItems(with: request, predicate: predicate)
+        
+        searchBar.resignFirstResponder()
+        
+        
+    }
 }
 
