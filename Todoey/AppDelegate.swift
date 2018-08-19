@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import RealmSwift
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -16,6 +17,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+        
+        //where the realm database is located
+        //command+shift+g to enter the file path
+        //all must be done within realm browser
+    print("This is it \(Realm.Configuration.defaultConfiguration.fileURL)")
+        
+        
+        
+        
+        
+        //realm object is like a number of persistent containers (relational databases)
+        //initiation of Realm can throw an error
+        do{
+            let realm = try Realm()
+            
+            
+        }
+        catch{
+            print("error initializing realm")
+        }
+        
+        
+        
         
         return true
     }

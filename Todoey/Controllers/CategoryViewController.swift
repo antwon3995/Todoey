@@ -7,13 +7,19 @@
 //
 
 import UIKit
+import RealmSwift
 import CoreData
 
 class CategoryViewController: UITableViewController {
     
-    var categoryArray = [Category]()
+    let realm = try! Realm()
     
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //The category Array is an object of type Result, which means the category Array will somewhere in the code be a result of a query.
+        //<Category> is just to specify the datatype the it needs to emulate
+    //Result objects are also auto-updating, which means when new Category objects are created, they don't have to be manually added to the CategoryArray as they automatically are
+    var categoryArray : Results<Category>?
+    
+//    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,25 +33,34 @@ class CategoryViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let category = categoryArray[indexPath.row]
+        
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        cell.textLabel?.text = category.name
+        cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No Categories Added"
         
         return cell
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categoryArray.count
+        //nil coalescing operator
+            //attach to an optional object, ?? ... refers to what it will be if the object? unwrapped is empty
+        return categoryArray?.count ?? 1
     }
     
     //data manipulation save and load data
     
-    func saveCategories(){
+    func saveCategories(category: Category){
         
         do{
-            try context.save()
+            
+            //realm.write is simply a block of code that is executed
+            
+            try realm.write {
+                //realm.add adds an object
+                realm.add(category)
+            
+            }
         }
         catch {
             print(error)
@@ -69,21 +84,31 @@ class CategoryViewController: UITableViewController {
             
             if let indexPath = tableView.indexPathForSelectedRow{
                 //row refers to the row selected of the pre-defined index path
-                destinationVC.selectedCategory = categoryArray[indexPath.row]
+                destinationVC.selectedCategory = categoryArray?[indexPath.row]
             }
             
         }
     }
     
-    func loadCategories(with request : NSFetchRequest<Category> = Category.fetchRequest()){
+    func loadCategories(){
+        
+        //realm.objects(dataType.self) grabs all the objects of the specified datatype within the realm object.
+        categoryArray = realm.objects(Category.self)
         
         
-        do{
-            try categoryArray = context.fetch(request)
-        }
-        catch {
-            print(error)
-        }
+        
+        
+        
+        
+        
+        
+//        
+//        do{
+//            try categoryArray = context.fetch(request)
+//        }
+//        catch {
+//            print(error)
+//        }
         
         tableView.reloadData()
         
@@ -100,14 +125,14 @@ class CategoryViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add Category", style: .default) { (alert) in
             
-            let category = Category(context: self.context)
-            category.name = textField.text
-            
-            self.categoryArray.append(category)
+            let category = Category()
+            category.name = textField.text!
             
             
             
-            self.saveCategories()
+            
+            
+            self.saveCategories(category: category)
             
             
         }
