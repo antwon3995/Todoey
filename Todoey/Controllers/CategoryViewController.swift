@@ -8,9 +8,11 @@
 
 import UIKit
 import RealmSwift
-import CoreData
 
-class CategoryViewController: UITableViewController {
+
+//swipe table view controller inherits from table view controller
+    //so CategoryViewController is "grandkid" of TableViewController
+class CategoryViewController: SwipeTableViewController{
     
     let realm = try! Realm()
     
@@ -26,21 +28,37 @@ class CategoryViewController: UITableViewController {
         
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
+        tableView.rowHeight = 80
+        
         loadCategories()
 
     }
+    
+    
+    
     //tableview datasource methods
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
+        //calling super class to return a cell
+        
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
+        //This CatgoryVC tableview datasource method, does everything the SwipeTableViewVC datasource method does (which does everything the table view VC datasource method does) except it adds more (it overrides it)
+            //because the text label is changed
         
+        
+        
+        //taking that cell and adding more "personlization" to it
         cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No Categories Added"
         
         return cell
     }
+    
+    
+    
+    
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         //nil coalescing operator
@@ -114,6 +132,28 @@ class CategoryViewController: UITableViewController {
         
     }
     
+    //Deletion of the category happens within the swipetableVC delegate method (within the superclass)
+        //There is a method within the super class called updateModel that is called by the delegate method
+        //that method, when called within the superclass will do nothing
+        //however since the delegate method is called in this class (super.tableVIew...)
+            //this overriden func is used instead
+            //the reason we need the overriden func is because the specific references to objects must be made in the specific class
+            //only general similarities between all VC that will use SwipeTableVC will be included within the superclass (like WHEN the updateModel is called)
+                //because any item is deleted after the delete button is pressed
+    override func updateModel(at indexPath: IndexPath) {
+        
+        if let categoryDeleted = self.categoryArray?[indexPath.row]{
+            do {
+                try realm.write {
+                    realm.delete(categoryDeleted)
+                }
+            }
+            catch{
+                print(error)
+            }
+        }
+    }
+    
     //add new categories addButtonPressed()
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -152,9 +192,3 @@ class CategoryViewController: UITableViewController {
     
     
 }
-
-
-
-
-
-

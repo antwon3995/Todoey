@@ -8,10 +8,10 @@
 
 import UIKit
 import RealmSwift
-import CoreData
 
 
-class ToDoListViewController: UITableViewController {
+
+class ToDoListViewController: SwipeTableViewController {
     
 
     
@@ -39,6 +39,7 @@ class ToDoListViewController: UITableViewController {
         
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
+        tableView.rowHeight = 80
         
     }
     
@@ -50,13 +51,16 @@ class ToDoListViewController: UITableViewController {
         return todoItems?.count ?? 1
     }
     
+    
+    
+    
     //index path is sort of like the array of entries within the table view itself, it has a row property that will return the index
     //This method makes you create a cell and return it
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
        
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         //optional binding
         if let item = todoItems?[indexPath.row]{
@@ -74,6 +78,10 @@ class ToDoListViewController: UITableViewController {
         
         return cell
     }
+    
+    
+    
+    
     
     //This function is triggered when a row of the table view is pressed
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -269,6 +277,22 @@ class ToDoListViewController: UITableViewController {
 //        }
 
         tableView.reloadData()
+    }
+    
+    
+    override func updateModel(at indexPath: IndexPath) {
+        
+        if let itemDeleted = todoItems?[indexPath.row]{
+            do{
+                try realm.write {
+                    realm.delete(itemDeleted)
+                }
+            }
+            catch{
+                print(error)
+            }
+        }
+        
     }
 
 
