@@ -8,6 +8,7 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
 
 
@@ -24,6 +25,9 @@ class ToDoListViewController: SwipeTableViewController {
     var todoItems : Results<Item>?
     let realm = try! Realm()
     
+    //outlet to the searchBar
+        //Previously referenced search bar within the delegate methods, in this case, there are no methods
+    @IBOutlet weak var searchBar: UISearchBar!
     //declare a new Category object named selectedCategory
         //the didSet happens IMMEDIATELY after a value is set equal to the variable
         //In this case, a value is set within the prepare segue method within CategoryVC
@@ -33,15 +37,74 @@ class ToDoListViewController: SwipeTableViewController {
         }
     }
     
-    
+    //Cannot be sure that viewDidLoad has been called before the VC was loaded into the Navigation Controller, because in this case navigation Controller doesn't exist yet so chanegs can't be made in viewDidLoad
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
+        //how to access
+        //print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
         tableView.rowHeight = 80
         
+        
     }
+    
+    //called just after the viewDidLoad
+        //right before the user sees anything on screen
+    override func viewWillAppear(_ animated: Bool) {
+        
+        
+        title = selectedCategory!.name
+        
+        
+        //Accessing the navigation bar's color
+        //Important to note, within the storyboard, the navigation controller bar (in the front) represents all the bars
+        //optional binding
+        guard let colorHex = selectedCategory?.color else {fatalError()}
+
+            
+        
+        
+        updateNavBar(withHexCode: colorHex)
+        
+    }
+    
+    
+    
+    //another life cycle method that is called just before the view disappears
+        //in this case right before view switches back to categoryVC
+    override func viewWillDisappear(_ animated: Bool) {
+        guard let originalColor = UIColor(hexString: "1D98F6") else {fatalError()}
+        updateNavBar(withHexCode: "1D98F6")
+    }
+    
+    //updating the navigation bar colors and attributes
+    func updateNavBar(withHexCode colorHex : String){
+        
+        
+        //guard is almost like optional binding, except deals with errors. Guard is most used when errors aren't expected
+        //if let (optional binding) should be used when error may happen 50% of the time or higher
+        //guard syntax is
+        //guard let this = that else {fatalError("printMessage")}
+        guard let navBar = navigationController?.navigationBar else {fatalError("Navigation controller does not exist.")}
+        
+        navBar.barTintColor = UIColor(hexString: colorHex)
+        guard let navBarColor = UIColor(hexString: colorHex) else {fatalError()}
+        
+        searchBar.barTintColor = navBarColor
+        
+        //tintcolor refers to the color of the items within the navigation bar, not the title
+        navBar.tintColor = ContrastColorOf(navBarColor, returnFlat: true)
+        
+        //setting the properties of the title, the largeTitleTextAttributes property is a dictionary
+        navBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor : ContrastColorOf(navBarColor, returnFlat: true)]
+        
+        
+        
+    }
+    
+    
+    
     
     //Two essential methods for table views:
         //numberOfRowsInSection, and cellForRowAt indexPath
@@ -65,6 +128,20 @@ class ToDoListViewController: SwipeTableViewController {
         //optional binding
         if let item = todoItems?[indexPath.row]{
             cell.textLabel?.text = todoItems?[indexPath.row].title
+            
+            let ratio : CGFloat = CGFloat(indexPath.row) / CGFloat(todoItems!.count)
+            
+            //optional binding
+            //using the UIColor.darken(byPercentage: CGFloat ) method,
+                //CGFloat is a decimal between 0 and 1, represents the percent that the color will be darkened
+            if let color = UIColor(hexString: (selectedCategory?.color)!)?.darken(byPercentage: ratio){
+                cell.backgroundColor = color
+                
+                //This method takes in a color and returns either black or white, depending on which is more visible on the color
+                    //helpful for the visibility of the darker gradients
+                cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+            }
+            
             
             
             //Sets the accessory type according to the done property of the item, using a ternary operator

@@ -11,6 +11,7 @@ import RealmSwift
 
 class Category: Object{
     @objc dynamic var name : String = ""
+    @objc dynamic var color : String = ""
     
     //each category has a "list" of Items
     //list is an object of the realm framework

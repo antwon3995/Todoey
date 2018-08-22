@@ -8,6 +8,7 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
 
 //swipe table view controller inherits from table view controller
@@ -28,7 +29,11 @@ class CategoryViewController: SwipeTableViewController{
         
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
+        //setting the height of the cell
         tableView.rowHeight = 80
+        
+        //no border between the cells
+        tableView.separatorStyle = .none
         
         loadCategories()
 
@@ -52,6 +57,18 @@ class CategoryViewController: SwipeTableViewController{
         
         //taking that cell and adding more "personlization" to it
         cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No Categories Added"
+        
+        
+        //setting the background color of the cell to be a random color, from the chameleon framework
+//        cell.backgroundColor = UIColor.randomFlat
+        //UIColor.randomFlat.hexValue() returns the hex value of the color
+        //UIColor(hexString: String) returns the UIColor associated with the hexValue
+        //May or may not be a value for color for the category
+       cell.backgroundColor = UIColor(hexString: (categoryArray?[indexPath.row].color ?? "1D9BF6"))
+        
+        guard let color = cell.backgroundColor else {fatalError()}
+        cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        
         
         return cell
     }
@@ -154,6 +171,7 @@ class CategoryViewController: SwipeTableViewController{
         }
     }
     
+    
     //add new categories addButtonPressed()
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -167,6 +185,7 @@ class CategoryViewController: SwipeTableViewController{
             
             let category = Category()
             category.name = textField.text!
+            category.color = UIColor.randomFlat.hexValue()
             
             
             
